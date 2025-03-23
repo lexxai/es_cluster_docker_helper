@@ -694,3 +694,22 @@ services:
       cpu: "8"
       memory: "8096M"
 ```
+
+## Test Environment
+
+The generated ElasticSearch cluster was tested using the resulting `docker-compose.yml` file on a **TrueNAS SCALE 24.10.2** server. The cluster was deployed as a custom application by importing the YAML file into TrueNAS SCALE.
+
+### Key Details:
+- **TrueNAS SCALE Version**: 24.10.2
+- **Storage Configuration**: Mount points were created as **ZFS Datasets** on the TrueNAS server.
+- **Deployment Method**: The `docker-compose.yml` file was used to deploy the cluster as a custom application.
+
+### Network Configuration:
+- **Network Mode**: ElasticSearch nodes were configured with `network_mode: host` in the `docker-compose.yml` file.
+- **IP and Ports**: All nodes share the same IP address but use different, incrementally assigned ports for **HTTPS** and **transport connections**.
+
+### Load Balancing:
+- A separate **HAProxy server** was later set up as a **round-robin reverse proxy** to balance traffic across the ElasticSearch nodes.
+- The HAProxy backend was configured to forward requests only to nodes with the **data-only role**, providing a single entry point for the ElasticSearch cluster.
+
+This setup ensures reliable storage, performance, and scalability, leveraging the robustness of ZFS on TrueNAS SCALE and the flexibility of HAProxy for load balancing.
