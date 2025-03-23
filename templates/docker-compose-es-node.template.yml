@@ -1,0 +1,72 @@
+services:
+  ${NODE_NAME}:
+    image: elasticsearch:${STACK_VERSION}
+    container_name: ${NODE_NAME}
+    platform: linux/amd64
+    user: "${USER}"
+    restart: unless-stopped
+    privileged: false
+    security_opt:
+    - no-new-privileges=true
+    cap_drop:
+    - ALL
+    environment:
+      - node.name=${NODE_NAME}
+      - ES_NETWORK_HOST="0.0.0.0,[::]"
+      - cluster.name=${CLUSTER_NAME}
+      - discovery.seed_hosts=${SEED_HOSTS}
+      - cluster.initial_master_nodes=${MASTER_NODES}
+      - node.roles=${NODE_ROLES}
+      - http.port=${HTTP_PORT}
+      - transport.port=${TRANSPORT_PORT}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - xpack.monitoring.collection.enabled=true
+      - xpack.monitoring.exporters.my_local.type=local
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certs/${NODE_DNS_NAME}/${NODE_DNS_NAME}.key
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certs/${NODE_DNS_NAME}/${NODE_DNS_NAME}.crt
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca/ca.crt
+      - xpack.security.http.ssl.supported_protocols="TLSv1.2,TLSv1.3"
+      - xpack.security.http.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certs/${NODE_DNS_NAME}/${NODE_DNS_NAME}.key
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certs/${NODE_DNS_NAME}/${NODE_DNS_NAME}.crt
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca/ca.crt
+      - xpack.security.transport.ssl.supported_protocols="TLSv1.2,TLSv1.3"
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - TZ="Etc/UTC"
+      - UMASK="002"
+      - UMASK_SET="002"
+    network_mode: "host"
+    volumes:
+      - type: bind
+        source: ${NODE_CERT_DATA_PATH}
+        target: /usr/share/elasticsearch/config/certs
+        read_only: true
+        bind:
+          create_host_path: false
+          propagation: rprivate
+
+      - type: bind
+        source: ${DATA_PATH}
+        target: /usr/share/elasticsearch/data
+        read_only: false
+        bind:
+          create_host_path: false
+          propagation: rprivate
+    deploy:
+      resources:
+        limits:
+          cpus: ${CPU_LIMIT}
+          memory: ${MEMORY_LIMIT}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+      - "CMD-SHELL"
+      - "curl --silent --output /dev/null --show-error --fail --cacert config/certs/ca/ca.crt --header \"Authorization: Basic $(echo -n elastic:${ELASTIC_PASSWORD} | base64)\" https://${NODE_DNS_NAME}:${HTTP_PORT}/_cluster/health?local=true"
+      interval: 10s
+      timeout: 10s
+      retries: 120

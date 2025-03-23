@@ -1,0 +1,38 @@
+services:
+  node-master:
+    limits:
+      cpu: "16"
+      memory: "32768M"
+  node-data:
+    limits:
+      cpu: "8"
+      memory: "16384M"
+  node-ingest:
+    limits:
+      cpu: "16"
+      memory: "16384M"
+  node-coordinator:
+    limits:
+      cpu: "8"
+      memory: "16384M"
+  node-data_ingest:
+    limits:
+      cpu: "16"
+      memory: "24384M"
+  node-master_data_ingest:
+    limits:
+      cpu: "32"
+      memory: "64000M"
+  node-master_data:
+    limits:
+      cpu: "16"
+      memory: "32768M"
+  setup:
+    limits:
+      cpu: "1"
+      memory: "1024M"
+  kibana:
+    limits:
+      cpu: "8"
+      memory: "16384M"
+

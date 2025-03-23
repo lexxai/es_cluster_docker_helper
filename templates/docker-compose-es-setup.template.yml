@@ -1,0 +1,59 @@
+services:
+  setup:
+    image: elasticsearch:${STACK_VERSION}
+    container_name: setup
+    volumes:
+      - type: bind
+        source: ${NODE_CERT_DATA_PATH}
+        target: /usr/share/elasticsearch/config/certs
+        read_only: false
+        bind:
+          create_host_path: false
+          propagation: rprivate
+    user: "${USER}"
+    command: >
+      bash -c 'if [ x${ELASTIC_PASSWORD} == x ]; then
+          echo "Set the ELASTIC_PASSWORD environment variable in the .env file";
+          exit 1;
+        elif [ x${KIBANA_PASSWORD} == x ]; then
+          echo "Set the KIBANA_PASSWORD environment variable in the .env file";
+          exit 1;
+        fi;
+        if [ ! -f config/certs/ca.zip ]; then
+          echo "Creating CA";
+          bin/elasticsearch-certutil ca --silent --pem -out config/certs/ca.zip;
+          unzip config/certs/ca.zip -d config/certs;
+        fi;
+        if [ ! -f config/certs/certs.zip ]; then
+          echo "Creating certs";
+          echo -ne \
+          "instances:\n"\
+          "- name: ${NODE_DNS_NAME}\n"\
+          "  dns:\n"\
+          "  - ${NODE_DNS_NAME}\n"\
+          "  - localhost\n"\
+          "  ip:\n"\
+          "  - ${NODE_IP}\n"\
+          "  - 127.0.0.1\n"\
+          > config/certs/instances.yml;
+          bin/elasticsearch-certutil cert --silent --pem -out config/certs/certs.zip --in config/certs/instances.yml --ca-cert config/certs/ca/ca.crt --ca-key config/certs/ca/ca.key;
+          unzip config/certs/certs.zip -d config/certs;
+        fi;
+        echo "Setting file permissions"
+        find config/certs -type d -exec chmod 750 \{\} \;;
+        find config/certs -type f -exec chmod 640 \{\} \;;
+        echo "Waiting for Elasticsearch availability";
+        until curl -s --cacert config/certs/ca/ca.crt https://${NODE_DNS_NAME}:${NODE_START_HTTP_PORT} | grep -q "missing authentication credentials"; do sleep 30; done;
+        echo "Setting kibana_system password";
+        until curl -s -X POST --cacert config/certs/ca/ca.crt -u "elastic:${ELASTIC_PASSWORD}" -H "Content-Type: application/json" https://${NODE_DNS_NAME}:${NODE_START_HTTP_PORT}/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
+        echo "All done!";'
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f config/certs/${NODE_DNS_NAME}/${NODE_DNS_NAME}.crt ]"]
+      interval: 1s
+      timeout: 5s
+      retries: 120
+    deploy:
+      resources:
+        limits:
+          cpus: ${CPU_LIMIT}
+          memory: ${MEMORY_LIMIT}

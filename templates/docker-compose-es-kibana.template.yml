@@ -1,0 +1,58 @@
+services:
+  kibana:
+    depends_on:
+      ${MASTER_NODE}:
+        condition: service_healthy
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    container_name: kibana
+    platform: linux/amd64
+    user: "${USER}"
+    restart: unless-stopped
+    privileged: false
+    security_opt:
+      - no-new-privileges=true
+    cap_drop:
+      - ALL
+    volumes:
+      - type: bind
+        source: ${NODE_CERT_DATA_PATH}
+        target: /usr/share/kibana/config/certs
+        read_only: true
+        bind:
+          create_host_path: false
+          propagation: rprivate
+      - kibanadata:/usr/share/kibana/data
+    ports:
+      - ${KIBANA_PORT}:5601
+    environment:
+      - SERVERNAME=kibana
+      - MONITORING_UI_CCS_ENABLED=false
+      - ELASTICSEARCH_HOSTS=https://${NODE_DNS_NAME}:${NODE_START_HTTP_PORT}
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - SERVER_SSL_ENABLED=true
+      - SERVER_SSL_KEY=/usr/share/kibana/config/certs/${NODE_DNS_NAME}/${NODE_DNS_NAME}.key
+      - SERVER_SSL_CERTIFICATE=/usr/share/kibana/config/certs/${NODE_DNS_NAME}/${NODE_DNS_NAME}.crt
+      - SERVER_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/ca/ca.crt
+      - SERVER_SSL_SUPPORTED_PROTOCOLS="TLSv1.2,TLSv1.3"
+      - SERVER_SSL_VERIFICATION_MODE=certificate
+      - ELASTICSEARCH_SSL_VERIFICATION_MODE=certificate
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/ca/ca.crt
+      - XPACK_REPORTING_ROLES_ENABLED=false
+    deploy:
+      resources:
+        limits:
+          cpus: ${CPU_LIMIT}
+          memory: ${MEMORY_LIMIT}
+    healthcheck:
+      interval: 10s
+      retries: 120
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert /usr/share/kibana/config/certs/ca/ca.crt -I https://localhost:5601 | grep -q 'HTTP/1.1 302 Found'",
+        ]
+      timeout: 30s
+volumes:
+  kibanadata:
+    driver: local
