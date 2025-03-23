@@ -1,3 +1,55 @@
+# Docker-Compose Generator for ElasticSearch Cluster
+
+This script helps generate a `docker-compose.yml` file for setting up an ElasticSearch cluster using template files and environment variables. The cluster is built as a set of Docker containers, including ElasticSearch nodes with different roles, Kibana, and additional service containers.
+
+## Usage
+
+1. **Configure Environment Variables**:  
+   Use a `.env` file to set the required environment variables. The main variable that configures the cluster is `DOCKER_SERVICES`.  
+
+   Example:  
+   ```plaintext
+   DOCKER_SERVICES="setup:1,node-master:1,node-data:3,node-ingest:2,node-coordinator:1,kibana:1"
+   ```
+   Here, nodes are separated by commas, and the count of each node is specified after a colon.
+
+2. **Run script**:
+   Execute the script to generate the docker-compose.yml file:
+```bash
+python ./gen-compose.py
+```
+
+## Installation 
+### Dependencies
+You can install the required dependencies using either pip or poetry.
+
+Using pip:
+```bash
+pip install -r requirements.txt
+```
+Using poetry:
+```bash
+poetry install
+```
+
+## Example Usage
+
+To configure a cluster with the following setup:
+
+    1 setup node
+
+    1 master node
+
+    3 data nodes
+
+    2 ingest nodes
+
+    1 coordinator node
+
+    1 Kibana instance
+
+Set the DOCKER_SERVICES variable in your .env file as follows:
+
 ## Example of run:
 
 ### Logs
